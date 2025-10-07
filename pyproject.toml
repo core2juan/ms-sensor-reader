@@ -1,0 +1,18 @@
+[tool.poetry]
+authors = ["Juan Pablo Montoya B <mb.juanpablo@gmail.com>"]
+package-mode = false
+name = "sensor-reader"
+version = "0.1.0"
+description = ""
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry.dependencies]
+python = "3.13.3"
+cffi = ">=1.17.1"
+pycparser = ">=2.22"
+lmdb = "^1.7.3"
+pydantic-settings = "^2.10.1"
