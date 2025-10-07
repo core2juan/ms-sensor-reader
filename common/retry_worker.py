@@ -23,32 +23,39 @@ class RetryWorker:
         logging.info(f"LMDB keys: {keys}")
         return keys
 
-    def _get_stored_metric(self, key: str):
+    def _get_stored_batch(self, key: str):
         with lmdb_read_client.begin() as txn:
             data = txn.get(key.encode())
             if data:
                 return json.loads(data.decode())
         return None
 
-    def _delete_stored_metric(self, key: str):
+    def _delete_stored_batch(self, key: str):
         with lmdb_write_client.begin(write=True) as txn:
             if txn.delete(key.encode()):
-                logging.info(f"Deleted metric from LMDB with key: {key}")
+                logging.info(f"Deleted metrics batch from LMDB with key: {key}")
                 return True
-            logging.warning(f"Failed to delete metric from LMDB with key: {key}")
+            logging.warning(f"Failed to delete metrics batch from LMDB with key: {key}")
             return False
 
-    def _retry_metric(self, key: str):
-        metric = self._get_stored_metric(key)
-        if not metric:
-            logging.info(f"No metric found for key: {key}")
+    def _retry_metrics_batch(self, key: str):
+        batch = self._get_stored_batch(key)
+        if not batch:
+            logging.info(f"No batch found for key: {key}")
+            return False
+
+        metrics = batch.get("metrics")
+        status_code = batch.get("status_code")
+
+        if status_code == 422:
+            logging.warning(f"Batch {key} has validation error (422), skipping retry")
             return False
 
         for attempt in range(1, self.max_retries + 1):
-            response = self._api_exporter(metric)
+            response = self._api_exporter(metrics)
             if response == 201:
-                logging.info(f"Successfully sent metric for key: {key} on attempt {attempt}")
-                self._delete_stored_metric(key)
+                logging.info(f"Successfully sent metrics batch for key: {key} on attempt {attempt}")
+                self._delete_stored_batch(key)
                 return True
             logging.error(f"Attempt {attempt} failed for key: {key}, status code: {response}")
             sleep(1)
@@ -59,6 +66,6 @@ class RetryWorker:
         while not self._stop.is_set():
             keys = self._get_lmdb_keys()
             for key in keys:
-                self._retry_metric(key)
+                self._retry_metrics_batch(key)
             logging.info("Retry cycle complete, sleeping for 10 seconds")
-            self._stop.wait(10)  # Wait for 10 seconds before next retry cycle
+            self._stop.wait(10)

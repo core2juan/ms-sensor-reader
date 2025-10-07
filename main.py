@@ -1,11 +1,10 @@
-import logging, sys, pdb
+import logging, sys
 
 from time import sleep
 from sensors import FloatSensor, EnergyConsumptionSensor
 from metrics_exporter import APIExporter, LMDBExporter, LogExporter
 from common.device_registerer import DeviceRegisterer
 from common.retry_worker import RetryWorker
-from common.settings import Settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -13,13 +12,7 @@ logging.basicConfig(
     handlers=[logging.StreamHandler(sys.stdout)]
 )
 
-settings = Settings()
-print(f"current setting {settings.api_key}")
 DeviceRegisterer()
-settings = Settings()
-print(f"current setting {settings.api_key}")
-
-pdb.set_trace()
 
 sensors = []
 for time in range(10):
@@ -35,8 +28,9 @@ lmdb_exporter = LMDBExporter()
 while True:
     metrics = [sensor.current_metric() for sensor in sensors]
     log_exporter(metrics)
-    if api_exporter(metrics) == 201:
+    status_code = api_exporter(metrics)
+    if status_code == 201:
         logging.info(f"Sent metrics to API successfully")
     else:
-        lmdb_exporter(metrics)
+        lmdb_exporter(metrics, status_code)
     sleep(5)

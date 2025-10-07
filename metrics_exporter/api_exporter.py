@@ -1,17 +1,43 @@
 import logging
 import requests
 from .exporter_interface import ExporterInterface
+from common.settings import Settings
+from common.device_registerer import DeviceRegisterer
 
 logger = logging.getLogger(__name__)
 
 class APIExporter(ExporterInterface):
-    COLLECTOR_HOST = "http://localhost:3000"
-    API_KEY = "c4bbe042e487196608078fd42d1d29d683190faae185e1c5d7df99fc4c2e29ca3a3c6b6ab65c88cdeca3f23501bb63ce7fb881d34b413764733c7c2d25dad5e6"
-    DEVICE_ID = "test-device-001"
+    def __init__(self):
+        self.settings = Settings()
+        self.device_registerer = DeviceRegisterer()
 
     def __call__(cls, metrics):
         try:
-            response = requests.post(f"{cls.COLLECTOR_HOST}/metrics", json=metrics)
+            cls.settings = Settings()
+            response = requests.post(
+                f"{cls.settings.collector_host}/metrics",
+                headers={"X-API-KEY": cls.settings.token},
+                json=metrics
+            )
+            
+            if response.status_code == 401:
+                logger.warning("Token expired or invalid, re-registering device...")
+                cls.device_registerer.register()
+                cls.settings = Settings()
+                response = requests.post(
+                    f"{cls.settings.collector_host}/metrics",
+                    headers={"X-API-KEY": cls.settings.token},
+                    json=metrics
+                )
+            
+            if response.status_code != 201:
+                try:
+                    error_data = response.json()
+                    error_msg = error_data.get("error", "Unknown error")
+                    logger.error(f"API returned status {response.status_code}: {error_msg}")
+                except:
+                    logger.error(f"API returned status {response.status_code}: {response.text}")
+            
             return response.status_code
         except requests.RequestException as e:
             logger.error(f"Error sending metric to API: {e}")
