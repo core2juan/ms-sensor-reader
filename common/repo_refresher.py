@@ -27,10 +27,11 @@ class RepoRefresher:
             cls.restart_requested = False
             cls._github_token = None
             cls._token_expiry = 0
+            _log_and_flush(f"RepoRefresher init: enabled={cls.settings.repo_refresher_enabled}, interval={cls.settings.repo_check_interval_minutes}min")
             if cls.settings.repo_refresher_enabled:
                 cls._instance._start_refresh_thread()
             else:
-                _log_and_flush("RepoRefresher disabled in settings")
+                _log_and_flush("RepoRefresher disabled in settings (set SENSOR_READER_REPO_REFRESHER_ENABLED=true to enable)")
         return cls._instance
 
     def _start_refresh_thread(self):
@@ -128,8 +129,13 @@ class RepoRefresher:
             _log_and_flush(f"Warning: Failed to cleanup git auth: {e}", "warning")
 
     def _refresh_loop(self):
+        _log_and_flush("Refresh loop thread started")
         while not self._stop.is_set():
-            self._check_and_update()
+            try:
+                self._check_and_update()
+            except Exception as e:
+                _log_and_flush(f"Unhandled exception in refresh loop: {e}", "error")
+            _log_and_flush(f"Sleeping for {self.settings.repo_check_interval_minutes} minute(s)...")
             self._stop.wait(self.settings.repo_check_interval_minutes * 60)
 
     def _check_and_update(self):
