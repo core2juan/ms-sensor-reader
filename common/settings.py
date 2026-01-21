@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     description: str = "A test device located in test location"
     
     # Repo Refresher settings
-    repo_refresher_enabled: bool = True
+    # Dont enable refresher on development. Otherwise your git directory may get corrupted.
+    repo_refresher_enabled: bool = False
     repo_check_interval_minutes: int = 30
     repo_branch: str = "main"
     github_app_id: int = 2702768
