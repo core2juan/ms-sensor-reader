@@ -1,4 +1,4 @@
-import os, requests, logging
+import os, requests, logging, signal, sys
 
 from time import sleep
 from common.settings import Settings
@@ -7,16 +7,26 @@ logger = logging.getLogger(__name__)
 
 class DeviceRegisterer:
     _instance = None
+    _shutdown_requested = False
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls.settings = Settings()
+            cls._shutdown_requested = False
+            signal.signal(signal.SIGINT, cls._handle_shutdown)
+            signal.signal(signal.SIGTERM, cls._handle_shutdown)
         return cls._instance
+
+    @classmethod
+    def _handle_shutdown(cls, signum, frame):
+        logger.info("Registration interrupted by signal, exiting...")
+        cls._shutdown_requested = True
+        sys.exit(0)
 
     def register(self):
         response_status = 000
-        while response_status not in [200, 201]:
+        while response_status not in [200, 201] and not DeviceRegisterer._shutdown_requested:
             try:
                 self.settings = Settings()
                 headers = {}
@@ -29,7 +39,8 @@ class DeviceRegisterer:
                     json={
                         "id": self.settings.device_id,
                         "description": self.settings.description
-                    }
+                    },
+                    timeout=5
                 )
                 response_status = response.status_code
                 if response_status in [200, 201]:
@@ -44,12 +55,8 @@ class DeviceRegisterer:
             except requests.RequestException as e:
                 logger.error(f"Could not register device: {e}. Trying again in 10 seconds...")
                 response_status = 000
-                try:
-                    sleep(10)
-                except KeyboardInterrupt:
-                    logger.info("Registration interrupted by user, exiting...")
-                    raise
+                for _ in range(10):
+                    if DeviceRegisterer._shutdown_requested:
+                        return
+                    sleep(1)
                 continue
-            except KeyboardInterrupt:
-                logger.info("Registration interrupted by user, exiting...")
-                raise
