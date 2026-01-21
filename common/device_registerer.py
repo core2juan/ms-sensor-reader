@@ -1,4 +1,4 @@
-import os, requests, logging, signal, sys
+import os, requests, logging, signal
 
 from time import sleep
 from common.settings import Settings
@@ -20,9 +20,8 @@ class DeviceRegisterer:
 
     @classmethod
     def _handle_shutdown(cls, signum, frame):
-        logger.info("Registration interrupted by signal, exiting...")
+        logger.info("Registration interrupted by signal, stopping registration...")
         cls._shutdown_requested = True
-        sys.exit(0)
 
     def register(self):
         response_status = 000
@@ -57,6 +56,10 @@ class DeviceRegisterer:
                 response_status = 000
                 for _ in range(10):
                     if DeviceRegisterer._shutdown_requested:
+                        logger.info("Registration stopped due to shutdown signal")
                         return
                     sleep(1)
                 continue
+        
+        if DeviceRegisterer._shutdown_requested:
+            logger.info("Registration incomplete due to shutdown")
