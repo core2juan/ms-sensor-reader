@@ -51,7 +51,7 @@ class Device:
         return {
             "timestamp": int(time_module.time()),
             "metrics": {
-                "cpu_usage_percent": psutil.cpu_percent(interval=0.1),
+                "cpu_usage_percent": psutil.cpu_percent(interval=None),
                 "memory_usage_percent": psutil.virtual_memory().percent,
                 "temperature_celsius": self._read_temperature()
             }
@@ -61,6 +61,9 @@ class Device:
         logger.info("Starting device...")
         
         DeviceRegisterer().register(shutdown_check=lambda: self._shutdown_requested)
+        
+        # Prime psutil CPU measurement (first call establishes baseline)
+        psutil.cpu_percent(interval=None)
         
         # Initialize sensors
         sensors = []
