@@ -1,13 +1,18 @@
 import logging
 import signal
-import sys
+import time as time_module
 from time import sleep
+
+import psutil
+
 from sensors import FloatSensor, EnergyConsumptionSensor
 from metrics_exporter import APIExporter, LMDBExporter, LogExporter
 from common.device_registerer import DeviceRegisterer
+from common.metric_type import MetricType
 from common.retry_worker import RetryWorker
 
 logger = logging.getLogger(__name__)
+
 
 class Device:
     def __init__(self):
@@ -19,18 +24,45 @@ class Device:
         logger.info(f"Received signal {signum}, initiating graceful shutdown...")
         self._shutdown_requested = True
 
+    def _read_temperature(self) -> float | None:
+        try:
+            temps = psutil.sensors_temperatures()
+            if temps:
+                # Try common temperature sensor names
+                for name in ["coretemp", "cpu_thermal", "cpu-thermal", "k10temp", "acpitz"]:
+                    if name in temps:
+                        return temps[name][0].current
+                # Fallback: return first available temperature
+                first_sensor = list(temps.values())[0]
+                if first_sensor:
+                    return first_sensor[0].current
+        except Exception as e:
+            logger.debug(f"Temperature reading not available: {e}")
+        return None
+
+    def current_metrics(self) -> dict:
+        return {
+            "timestamp": int(time_module.time()),
+            "metrics": {
+                "cpu_usage_percent": psutil.cpu_percent(interval=0.1),
+                "memory_usage_percent": psutil.virtual_memory().percent,
+                "temperature_celsius": self._read_temperature()
+            }
+        }
+
     def run(self):
         logger.info("Starting device...")
         
         DeviceRegisterer().register()
         
+        # Initialize sensors
         sensors = []
         for time in range(10):
             sensors.append(FloatSensor(f"float_sensor_{time}", f"A test float sensor {time}"))
             sensors.append(EnergyConsumptionSensor(f"energy_sensor_{time}", f"A test energy consumption sensor {time}"))
         
+        # Initialize worker and exporters
         worker = RetryWorker()
-        
         api_exporter = APIExporter()
         log_exporter = LogExporter()
         lmdb_exporter = LMDBExporter()
@@ -38,13 +70,23 @@ class Device:
         logger.info("Device running, collecting metrics...")
         
         while not self._shutdown_requested:
-            metrics = [sensor.current_metric() for sensor in sensors]
-            log_exporter(metrics)
-            status_code = api_exporter(metrics)
-            if status_code == 201:
-                logger.info("Sent metrics to API successfully")
+            # Collect and export sensor metrics
+            sensor_metrics = [sensor.current_metric() for sensor in sensors]
+            log_exporter(sensor_metrics)
+            sensor_status_code = api_exporter(sensor_metrics, MetricType.SENSOR)
+            if sensor_status_code == 201:
+                logger.info("Sent sensor metrics to API successfully")
             else:
-                lmdb_exporter(metrics, status_code)
+                lmdb_exporter(sensor_metrics, sensor_status_code, MetricType.SENSOR)
+            
+            # Collect and export device status metrics
+            device_status = self.current_metrics()
+            device_status_code = api_exporter(device_status, MetricType.DEVICE_STATUS)
+            if device_status_code == 201:
+                logger.info("Sent device status to API successfully")
+            else:
+                lmdb_exporter(device_status, device_status_code, MetricType.DEVICE_STATUS)
+            
             sleep(5)
         
         logger.info("Device shutdown complete")
