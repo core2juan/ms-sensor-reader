@@ -25,14 +25,21 @@ class Device:
         self._shutdown_requested = True
 
     def _read_temperature(self) -> float | None:
+        # Raspberry Pi: read from thermal zone (returns millidegrees Celsius)
+        try:
+            with open("/sys/class/thermal/thermal_zone0/temp", "r") as f:
+                temp_millidegrees = int(f.read().strip())
+                return temp_millidegrees / 1000.0
+        except (FileNotFoundError, IOError, ValueError):
+            pass
+        
+        # Fallback: try psutil for other platforms
         try:
             temps = psutil.sensors_temperatures()
             if temps:
-                # Try common temperature sensor names
                 for name in ["coretemp", "cpu_thermal", "cpu-thermal", "k10temp", "acpitz"]:
                     if name in temps:
                         return temps[name][0].current
-                # Fallback: return first available temperature
                 first_sensor = list(temps.values())[0]
                 if first_sensor:
                     return first_sensor[0].current
