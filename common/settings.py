@@ -7,3 +7,6 @@ class Settings(BaseSettings):
     token: str = ""
     device_id: str = "test-device-001"
     description: str = "A test device located in test location"
+    
+    repo_refresher_enabled: bool = True
+    repo_check_interval_minutes: int = 30
