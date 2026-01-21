@@ -22,7 +22,7 @@ class Device:
     def run(self):
         logger.info("Starting device...")
         
-        DeviceRegisterer()
+        DeviceRegisterer().register()
         
         sensors = []
         for time in range(10):

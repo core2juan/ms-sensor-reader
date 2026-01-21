@@ -12,7 +12,6 @@ class DeviceRegisterer:
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls.settings = Settings()
-            cls._instance.register()
         return cls._instance
 
     def register(self):
@@ -45,5 +44,12 @@ class DeviceRegisterer:
             except requests.RequestException as e:
                 logger.error(f"Could not register device: {e}. Trying again in 10 seconds...")
                 response_status = 000
-                sleep(10)
+                try:
+                    sleep(10)
+                except KeyboardInterrupt:
+                    logger.info("Registration interrupted by user, exiting...")
+                    raise
                 continue
+            except KeyboardInterrupt:
+                logger.info("Registration interrupted by user, exiting...")
+                raise
