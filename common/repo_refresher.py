@@ -142,7 +142,7 @@ class RepoRefresher:
             self._setup_git_auth(repo_path)
             
             result = subprocess.run(
-                ["git", "fetch", "origin", self.settings.repo_branch],
+                ["git", "fetch", "--depth", "1", "origin", self.settings.repo_branch],
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
@@ -207,7 +207,7 @@ class RepoRefresher:
             self._setup_git_auth(repo_path)
             
             result = subprocess.run(
-                ["git", "pull", "origin", self.settings.repo_branch],
+                ["git", "pull", "--depth", "1", "origin", self.settings.repo_branch],
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
@@ -218,6 +218,18 @@ class RepoRefresher:
                 _log_and_flush(f"Failed to pull changes: {result.stderr}", "error")
                 self._cleanup_git_auth(repo_path)
                 return
+            
+            _log_and_flush("Cleaning up git repository...")
+            result = subprocess.run(
+                ["git", "gc", "--prune=now"],
+                cwd=repo_path,
+                capture_output=True,
+                text=True,
+                timeout=60
+            )
+            
+            if result.returncode != 0:
+                _log_and_flush(f"Git gc warning: {result.stderr}", "warning")
             
             _log_and_flush("Installing dependencies with poetry...")
             result = subprocess.run(
