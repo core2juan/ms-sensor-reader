@@ -53,7 +53,7 @@ class Device:
     def run(self):
         logger.info("Starting device...")
         
-        DeviceRegisterer().register()
+        DeviceRegisterer().register(shutdown_check=lambda: self._shutdown_requested)
         
         # Initialize sensors
         sensors = []

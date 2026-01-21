@@ -1,31 +1,32 @@
-import os, requests, logging, signal
+import os, requests, logging
 
 from time import sleep
 from common.settings import Settings
 
 logger = logging.getLogger(__name__)
 
+
 class DeviceRegisterer:
     _instance = None
-    _shutdown_requested = False
 
     def __new__(cls, *args, **kwargs):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
             cls.settings = Settings()
-            cls._shutdown_requested = False
-            signal.signal(signal.SIGINT, cls._handle_shutdown)
-            signal.signal(signal.SIGTERM, cls._handle_shutdown)
+            cls._shutdown_check = None
         return cls._instance
 
-    @classmethod
-    def _handle_shutdown(cls, signum, frame):
-        logger.info("Registration interrupted by signal, stopping registration...")
-        cls._shutdown_requested = True
-
-    def register(self):
+    def register(self, shutdown_check=None):
+        """
+        Register the device with the collector API.
+        
+        Args:
+            shutdown_check: Optional callable that returns True if shutdown was requested.
+        """
+        self._shutdown_check = shutdown_check or (lambda: False)
+        
         response_status = 000
-        while response_status not in [200, 201] and not DeviceRegisterer._shutdown_requested:
+        while response_status not in [200, 201] and not self._shutdown_check():
             try:
                 self.settings = Settings()
                 headers = {}
@@ -55,11 +56,11 @@ class DeviceRegisterer:
                 logger.error(f"Could not register device: {e}. Trying again in 10 seconds...")
                 response_status = 000
                 for _ in range(10):
-                    if DeviceRegisterer._shutdown_requested:
+                    if self._shutdown_check():
                         logger.info("Registration stopped due to shutdown signal")
                         return
                     sleep(1)
                 continue
         
-        if DeviceRegisterer._shutdown_requested:
+        if self._shutdown_check():
             logger.info("Registration incomplete due to shutdown")

@@ -201,13 +201,14 @@ class RepoRefresher:
     def _update_and_restart(self):
         repo_path = os.path.dirname(os.path.dirname(__file__))
         try:
-            _log_and_flush("Pulling latest changes...")
+            _log_and_flush("Resetting to latest remote changes...")
             
             # Setup GitHub App authentication (already done in _check_and_update, but ensure it's set)
             self._setup_git_auth(repo_path)
             
+            # Use reset --hard to force local to match remote, avoiding divergent branch issues
             result = subprocess.run(
-                ["git", "pull", "--depth", "1", "origin", self.settings.repo_branch],
+                ["git", "reset", "--hard", f"origin/{self.settings.repo_branch}"],
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
@@ -215,7 +216,7 @@ class RepoRefresher:
             )
             
             if result.returncode != 0:
-                _log_and_flush(f"Failed to pull changes: {result.stderr}", "error")
+                _log_and_flush(f"Failed to reset to remote: {result.stderr}", "error")
                 self._cleanup_git_auth(repo_path)
                 return
             
