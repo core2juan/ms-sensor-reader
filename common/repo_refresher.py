@@ -46,7 +46,7 @@ class RepoRefresher:
             repo_path = os.path.dirname(os.path.dirname(__file__))
             
             result = subprocess.run(
-                ["git", "fetch", "origin", "main"],
+                ["git", "fetch", "origin", self.settings.repo_branch],
                 cwd=repo_path,
                 capture_output=True,
                 text=True,
@@ -72,7 +72,7 @@ class RepoRefresher:
             local_commit = result.stdout.strip()
             
             result = subprocess.run(
-                ["git", "rev-parse", "origin/main"],
+                ["git", "rev-parse", f"origin/{self.settings.repo_branch}"],
                 cwd=os.path.dirname(os.path.dirname(__file__)),
                 capture_output=True,
                 text=True,
@@ -100,7 +100,7 @@ class RepoRefresher:
         try:
             _log_and_flush("Pulling latest changes...")
             result = subprocess.run(
-                ["git", "pull", "origin", "main"],
+                ["git", "pull", "origin", self.settings.repo_branch],
                 cwd=os.path.dirname(os.path.dirname(__file__)),
                 capture_output=True,
                 text=True,

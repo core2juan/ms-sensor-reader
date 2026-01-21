@@ -10,3 +10,4 @@ class Settings(BaseSettings):
     
     repo_refresher_enabled: bool = True
     repo_check_interval_minutes: int = 30
+    repo_branch: str = "main"
