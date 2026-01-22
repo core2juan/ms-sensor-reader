@@ -19,4 +19,5 @@ pydantic-settings = "^2.10.1"
 pygithub = "^2.8.1"
 psutil = "^6.0.0"
 gpiozero = "^2.0.1"
+pigpio = "^1.78"  # GPIO backend - requires pigpiod daemon running
 pyyaml = "^6.0.2"

@@ -155,6 +155,10 @@ rsync -av --exclude='__pycache__' \
 
 # Copy GitHub App PEM file (for auto-updates)
 scp sensor_reader/repo-refresher.private-key.pem pi@raspberry-pi:/home/pi/sensor_reader/
+
+# Enable RaspberryPI pigpio
+sudo systemctl enable pigpiod
+sudo systemctl start pigpiod
 ```
 
 ### On the Raspberry Pi
