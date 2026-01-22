@@ -10,6 +10,7 @@ from metrics_exporter import APIExporter, LMDBExporter, LogExporter
 from common.device_registerer import DeviceRegisterer
 from common.metric_type import MetricType
 from common.retry_worker import RetryWorker
+from common.sensor_config_loader import load_sensors_from_config
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +66,15 @@ class Device:
         # Prime psutil CPU measurement (first call establishes baseline)
         psutil.cpu_percent(interval=None)
         
-        # Initialize sensors
+        # Initialize test sensors
         sensors = []
         for time in range(10):
             sensors.append(FloatSensor(f"float_sensor_{time}", f"A test float sensor {time}"))
             sensors.append(EnergyConsumptionSensor(f"energy_sensor_{time}", f"A test energy consumption sensor {time}"))
+        
+        # Load live sensors from config
+        live_sensors = load_sensors_from_config()
+        sensors.extend(live_sensors)
         
         # Initialize worker and exporters
         worker = RetryWorker()

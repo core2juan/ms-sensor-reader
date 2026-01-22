@@ -83,3 +83,6 @@ data.lmdb/
 *.p7c
 *.p7m
 *.p7s
+
+# Sensor config
+sensor_config.yaml
