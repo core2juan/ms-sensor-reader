@@ -66,7 +66,8 @@ def _load_io_sensors(io_config: dict, FloatSensorClass) -> list:
                 sensor = FloatSensorClass(
                     id=sensor_def['id'],
                     description=sensor_def['description'],
-                    pin=sensor_def['pin']
+                    pin=sensor_def['pin'],
+                    inverted=sensor_def.get('inverted', False)
                 )
                 sensors.append(sensor)
                 logger.info(f"Initialized live FloatSensor '{sensor_def['id']}' on pin {sensor_def['pin']}")
