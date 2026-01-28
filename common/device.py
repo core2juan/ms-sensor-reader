@@ -68,9 +68,9 @@ class Device:
         
         # Initialize test sensors
         sensors = []
-        for time in range(10):
-            sensors.append(FloatSensor(f"float_sensor_{time}", f"A test float sensor {time}"))
-            sensors.append(EnergyConsumptionSensor(f"energy_sensor_{time}", f"A test energy consumption sensor {time}"))
+        #for time in range(10):
+        #    sensors.append(FloatSensor(f"float_sensor_{time}", f"A test float sensor {time}"))
+        #    sensors.append(EnergyConsumptionSensor(f"energy_sensor_{time}", f"A test energy consumption sensor {time}"))
         
         # Load live sensors from config
         live_sensors = load_sensors_from_config()

@@ -19,6 +19,4 @@ pydantic-settings = "^2.10.1"
 pygithub = "^2.8.1"
 psutil = "^6.0.0"
 gpiozero = "^2.0.1"
-# lgpio for Raspberry Pi 5: install via `sudo apt install python3-lgpio`
-# and enable system-site-packages: `poetry config virtualenvs.options.system-site-packages true`
 pyyaml = "^6.0.2"
