@@ -5,11 +5,6 @@ Extends SensorInterface with ADC initialization and voltage reading capabilities
 """
 import logging
 
-import board
-import busio
-import adafruit_ads1x15.ads1115 as ADS
-from adafruit_ads1x15.analog_in import AnalogIn
-
 from sensors.sensor_interface import SensorInterface
 
 logger = logging.getLogger(__name__)
@@ -22,14 +17,6 @@ class AnalogSensorBase(SensorInterface):
     Initializes I2C communication and provides voltage reading from
     a specified ADC channel (0-3 corresponding to A0-A3).
     """
-    
-    # Channel mapping: channel number to ADS1115 pin constant
-    CHANNEL_MAP = {
-        0: ADS.P0,  # A0
-        1: ADS.P1,  # A1
-        2: ADS.P2,  # A2
-        3: ADS.P3,  # A3
-    }
 
     def __init__(self, id: str, description: str, channel: int = 0, address: int = 0x48):
         """
@@ -46,16 +33,30 @@ class AnalogSensorBase(SensorInterface):
         """
         super().__init__(id, description)
         
-        if channel not in self.CHANNEL_MAP:
+        if channel not in (0, 1, 2, 3):
             raise ValueError(f"Invalid channel {channel}. Must be 0-3.")
         
         self._channel = channel
         self._address = address
         
+        # Import hardware libraries here to avoid loading on dev machines
+        import board
+        import busio
+        import adafruit_ads1x15.ads1115 as ADS
+        from adafruit_ads1x15.analog_in import AnalogIn
+        
+        # Channel mapping: channel number to ADS1115 pin constant
+        channel_map = {
+            0: ADS.P0,  # A0
+            1: ADS.P1,  # A1
+            2: ADS.P2,  # A2
+            3: ADS.P3,  # A3
+        }
+        
         # Initialize I2C and ADC
         self._i2c = busio.I2C(board.SCL, board.SDA)
         self._ads = ADS.ADS1115(self._i2c, address=address)
-        self._analog_in = AnalogIn(self._ads, self.CHANNEL_MAP[channel])
+        self._analog_in = AnalogIn(self._ads, channel_map[channel])
         
         logger.info(f"AnalogSensorBase '{id}' initialized on channel A{channel} (address=0x{address:02x})")
 
