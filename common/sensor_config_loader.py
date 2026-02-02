@@ -40,8 +40,9 @@ def load_sensors_from_config(config_path: str | Path | None = None) -> list:
         logger.info("No sensors defined in config file")
         return []
     
-    # Import here to avoid loading gpiozero on dev machines
+    # Import here to avoid loading gpiozero/adafruit on dev machines
     from sensors.live.io import FloatSensor as LiveFloatSensor
+    from sensors.live.analog import PressureSensor as LivePressureSensor
     
     sensors = []
     sensors_config = config['sensors']
@@ -50,6 +51,11 @@ def load_sensors_from_config(config_path: str | Path | None = None) -> list:
     if 'io' in sensors_config:
         io_config = sensors_config['io']
         sensors.extend(_load_io_sensors(io_config, LiveFloatSensor))
+    
+    # Load analog sensors
+    if 'analog' in sensors_config:
+        analog_config = sensors_config['analog']
+        sensors.extend(_load_analog_sensors(analog_config, LivePressureSensor))
     
     logger.info(f"Loaded {len(sensors)} live sensor(s) from config")
     return sensors
@@ -75,5 +81,33 @@ def _load_io_sensors(io_config: dict, FloatSensorClass) -> list:
                 logger.error(f"Missing required field {e} in float sensor config: {sensor_def}")
             except Exception as e:
                 logger.error(f"Failed to initialize float sensor: {e}")
+    
+    return sensors
+
+
+def _load_analog_sensors(analog_config: dict, PressureSensorClass) -> list:
+    """Load analog sensors from config."""
+    sensors = []
+    
+    # Load pressure sensors
+    if 'pressure_sensors' in analog_config and analog_config['pressure_sensors']:
+        for sensor_def in analog_config['pressure_sensors']:
+            try:
+                sensor = PressureSensorClass(
+                    id=sensor_def['id'],
+                    description=sensor_def['description'],
+                    channel=sensor_def.get('channel', 0),
+                    min_pressure=sensor_def.get('min_pressure', 0.0),
+                    max_pressure=sensor_def.get('max_pressure', 30.0),
+                    unit=sensor_def.get('unit', 'psi'),
+                )
+                sensors.append(sensor)
+                logger.info(
+                    f"Initialized live PressureSensor '{sensor_def['id']}' on channel A{sensor_def.get('channel', 0)}"
+                )
+            except KeyError as e:
+                logger.error(f"Missing required field {e} in pressure sensor config: {sensor_def}")
+            except Exception as e:
+                logger.error(f"Failed to initialize pressure sensor: {e}")
     
     return sensors
